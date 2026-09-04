@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-ink-950 text-ink-200 font-sans antialiased;
+    /* Safe areas so the mobile layout clears the notch and home indicator. */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+      env(safe-area-inset-left);
+  }
+
+  ::selection {
+    @apply bg-ghost-500/30 text-white;
+  }
+
+  *:focus-visible {
+    @apply outline-none ring-2 ring-ghost-500/70 ring-offset-2 ring-offset-ink-950;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-ink-700/70 bg-ink-900/70 shadow-card;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-transparent px-3 py-2
+      text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-ghost-600 text-white hover:bg-ghost-500;
+  }
+
+  .btn-secondary {
+    @apply btn border-ink-700 bg-ink-850 text-ink-200 hover:bg-ink-800;
+  }
+
+  .btn-ghost {
+    @apply btn text-ink-300 hover:bg-ink-850 hover:text-white;
+  }
+
+  .btn-danger {
+    @apply btn border-red-900/60 bg-red-950/60 text-red-300 hover:bg-red-900/50;
+  }
+
+  .input {
+    @apply w-full rounded-lg border border-ink-700 bg-ink-950/60 px-3 py-2 text-sm text-ink-200
+      placeholder:text-ink-500 focus:border-ghost-600;
+  }
+
+  .label {
+    @apply mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-400;
+  }
+}
