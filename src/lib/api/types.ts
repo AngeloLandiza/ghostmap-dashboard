@@ -589,7 +589,8 @@ export const pricingEntrySchema = flexOpen({
   asOf: nstr,
   source: nstr,
   verified: bool(false),
-  notes: nstr,
+  /** `PriceEntry.note` on the backend (singular) — a caveat, e.g. why a price is unverified. */
+  note: nstr,
 })
 export type PricingEntry = z.infer<typeof pricingEntrySchema>
 
@@ -641,18 +642,91 @@ export const costReportSchema = flexOpen({
 })
 export type CostReport = z.infer<typeof costReportSchema>
 
-/** `GET /admin/costs/usage` — measured quantities behind the estimate. */
+/**
+ * `MeasuredUsage` from `ghostmap-backend/src/lib/costs/usage.ts`: everything `measureUsage()`
+ * read from `api_usage`, `usage_events`, GCS and the inventory tables for the window.
+ */
+export const measuredUsageSchema = flexOpen({
+  windowDays: num(),
+  since: nstr,
+  api: flexOpen({
+    requests: num(),
+    bytesIn: num(),
+    bytesOut: num(),
+    durationMs: num(),
+    googleSignIns: num(),
+  }),
+  /** Keyed by `UsageEventKind` (`ably_publish`, `signed_upload`, ...), not an array on the wire. */
+  events: z.record(z.string(), flexOpen({ count: num(), bytes: num() })).catch(() => ({})),
+  storage: flexOpen({
+    totalBytes: num(),
+    totalObjects: num(),
+    avgObjectBytes: num(),
+    configured: bool(false),
+    cached: bool(false),
+    updatedAt: nstr,
+  }),
+  database: flexOpen({ sizeBytes: num() }),
+  inventory: flexOpen({
+    keyframes: num(),
+    keyframeBytes: num(),
+    maps: num(),
+    mapBytes: num(),
+    sessions: num(),
+    activeSessions: num(),
+    activeParticipants: num(),
+    participantJoins: num(),
+    participantLeaves: num(),
+  }),
+  merges: flexOpen({ finished: num(), seconds: num() }),
+})
+export type MeasuredUsage = z.infer<typeof measuredUsageSchema>
+
+/** Flattens `measured` into `metric.path -> number`, for a simple sortable key/value display. */
+function flattenMeasuredUsage(m: MeasuredUsage): Record<string, number> {
+  return {
+    'api.requests': m.api.requests,
+    'api.bytesIn': m.api.bytesIn,
+    'api.bytesOut': m.api.bytesOut,
+    'api.durationMs': m.api.durationMs,
+    'api.googleSignIns': m.api.googleSignIns,
+    'storage.totalBytes': m.storage.totalBytes,
+    'storage.totalObjects': m.storage.totalObjects,
+    'storage.avgObjectBytes': m.storage.avgObjectBytes,
+    'database.sizeBytes': m.database.sizeBytes,
+    'inventory.keyframes': m.inventory.keyframes,
+    'inventory.keyframeBytes': m.inventory.keyframeBytes,
+    'inventory.maps': m.inventory.maps,
+    'inventory.mapBytes': m.inventory.mapBytes,
+    'inventory.sessions': m.inventory.sessions,
+    'inventory.activeSessions': m.inventory.activeSessions,
+    'inventory.activeParticipants': m.inventory.activeParticipants,
+    'inventory.participantJoins': m.inventory.participantJoins,
+    'inventory.participantLeaves': m.inventory.participantLeaves,
+    'merges.finished': m.merges.finished,
+    'merges.seconds': m.merges.seconds,
+  }
+}
+
+/**
+ * `GET /admin/costs/usage` — measured quantities behind the estimate. The backend nests
+ * everything under `measured` (see `UsageResult` in `usage.ts`); `metrics` and `events` are
+ * derived here into the flat shapes the Metrics tab renders.
+ */
 export const usageReportSchema = flexOpen({
   days: num(30),
   since: nstr,
-  metrics: z.record(z.string(), z.coerce.number()).catch(() => ({})),
-  byDay: z
-    .array(flexOpen({ day: str(), requests: num(), bytesOut: num(), keyframes: num() }))
-    .catch(() => []),
-  events: z
-    .array(flexOpen({ kind: str(), count: num(), bytes: num() }))
-    .catch(() => []),
-})
+  measured: measuredUsageSchema,
+  caveats: z.array(z.string()).catch(() => []),
+}).transform((r) => ({
+  ...r,
+  metrics: flattenMeasuredUsage(r.measured),
+  events: Object.entries(r.measured.events).map(([kind, totals]) => ({
+    kind,
+    count: totals.count,
+    bytes: totals.bytes,
+  })),
+}))
 export type UsageReport = z.infer<typeof usageReportSchema>
 
 /** Query for `GET /admin/costs/projection` (wire names, all optional). */

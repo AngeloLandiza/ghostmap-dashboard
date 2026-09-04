@@ -166,7 +166,7 @@ export function PricingTable({ entries }: { entries: PricingEntry[] }): JSX.Elem
       render: (row) => (
         <div>
           <p className="text-ink-100">{row.metric}</p>
-          {row.notes ? <p className="mt-0.5 max-w-md text-xs text-ink-500">{row.notes}</p> : null}
+          {row.note ? <p className="mt-0.5 max-w-md text-xs text-ink-500">{row.note}</p> : null}
         </div>
       ),
     },
