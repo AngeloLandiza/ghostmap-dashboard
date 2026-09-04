@@ -2,6 +2,37 @@
 
 Non-obvious choices, newest first. See `docs/PLAN-PHASE2.md` for the cross-repo contract.
 
+## E2E, the device simulator and CI (2026-09-04)
+
+**The simulator speaks pure REST, no Ably client.** `POST /v1/sessions/:id/keyframes` already
+makes the backend publish the `keyframes` realtime message itself (API.md), so
+`scripts/simulate-device.ts` never needs an Ably SDK — it just registers keyframes on a
+schedule. That keeps it a small, dependency-free `tsx` script instead of a second realtime
+client to maintain.
+
+**One static test object, not a growing point cloud.** The 500 inline points describe a
+stationary 0.8 m cube with a different colour per face, generated once and sent unchanged with
+every keyframe — a real phone keeps re-observing the same room, and a fixed, colour-coded
+shape is easy to recognise as "the simulator's output" in the live viewer at a glance. Only the
+camera pose moves (a fixed-speed orbit around the cube, independent of `--seconds`), which is
+what actually exercises the trajectory and frustum rendering.
+
+**`e2e/` stays the test directory, not `tests/e2e/`.** `playwright.config.ts` already points
+`testDir` at `./e2e`, and the scaffold's `e2e/README.md` already described this flow — adding a
+second, empty test directory would just be dead structure Playwright never runs.
+
+**A few `data-testid`s were added deliberately, not everywhere.** `ParticipantsPanel`'s rows
+(plus `data-participant-kind` and `data-left`) and `LiveStatsBar`'s counters (`stat-keyframes`,
+`stat-points`, ...) are the only reliable way to assert "a device joined" and "the keyframe
+count is growing" without depending on copy that is free to change. Nothing else in the app
+carries one; add more only where a test would otherwise have to key off wording or layout.
+
+**The E2E suite skips itself instead of failing when secrets are absent**, both locally
+(`test.skip` on missing `E2E_API_BASE`/`E2E_ADMIN_API_KEY`/`E2E_CLIENT_ACCESS_KEY`) and in CI
+(the `e2e` job checks the same three repository secrets at runtime and no-ops if any are
+blank). Forked-PR runs never see secrets, and a fresh clone of this repo has no backend to
+test against yet — neither should turn CI red.
+
 ## Scaffold, auth and app shell (2026-09-04)
 
 **Responses are normalized to camelCase in one place.** The backend serves two casings at

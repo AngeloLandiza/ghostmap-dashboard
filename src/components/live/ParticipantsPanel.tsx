@@ -91,7 +91,13 @@ export function ParticipantsPanel({
             const device = p.deviceId ? byDevice.get(p.deviceId) : undefined
             const isDevice = p.kind !== 'viewer'
             return (
-              <li key={p.id || `${p.deviceId}-${p.userId}`} className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
+              <li
+                key={p.id || `${p.deviceId}-${p.userId}`}
+                data-testid="participant-row"
+                data-participant-kind={p.kind}
+                data-left={left}
+                className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0"
+              >
                 <span className="mt-1 flex items-center gap-1.5">
                   <ColorDot color={p.color} muted={left} />
                   <span

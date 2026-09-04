@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck, build and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm run build
+
+      - run: npm test
+
+  e2e:
+    name: Playwright E2E
+    needs: check
+    runs-on: ubuntu-latest
+    # Only runs against a real backend, so it needs repository secrets (Settings -> Secrets
+    # and variables -> Actions): E2E_API_BASE, E2E_ADMIN_API_KEY, E2E_CLIENT_ACCESS_KEY.
+    # Forked PRs never see secrets, and a repo without them yet should not fail CI over it —
+    # both cases are handled by checking the values at runtime and skipping the job's real
+    # work instead of failing when they are blank.
+    env:
+      E2E_BASE_URL: ${{ secrets.E2E_BASE_URL }}
+      E2E_API_BASE: ${{ secrets.E2E_API_BASE }}
+      E2E_ADMIN_API_KEY: ${{ secrets.E2E_ADMIN_API_KEY }}
+      E2E_CLIENT_ACCESS_KEY: ${{ secrets.E2E_CLIENT_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Check whether the E2E secrets are configured
+        id: secrets
+        run: |
+          if [ -n "$E2E_API_BASE" ] && [ -n "$E2E_ADMIN_API_KEY" ] && [ -n "$E2E_CLIENT_ACCESS_KEY" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping the E2E job: E2E_API_BASE, E2E_ADMIN_API_KEY and E2E_CLIENT_ACCESS_KEY are not all set as repository secrets."
+          fi
+
+      - name: Install Playwright browsers
+        if: steps.secrets.outputs.configured == 'true'
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright specs
+        if: steps.secrets.outputs.configured == 'true'
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: steps.secrets.outputs.configured == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14

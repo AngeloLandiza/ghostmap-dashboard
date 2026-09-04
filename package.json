@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "simulate": "tsx scripts/simulate-device.ts",
     "lint": "tsc --noEmit"
   },
   "repository": {
@@ -42,6 +43,7 @@
     "jsdom": "^29.1.1",
     "postcss": "^8.5.28",
     "tailwindcss": "^3.4.19",
+    "tsx": "^4.23.13",
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
     "vitest": "^5.0.0"

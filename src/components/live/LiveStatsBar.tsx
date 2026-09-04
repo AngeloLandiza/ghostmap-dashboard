@@ -9,9 +9,20 @@ import type { LivePhase } from '../../lib/realtime/useLiveParty'
 import { formatNumber } from '../../lib/format'
 import { Badge, Spinner } from '../ui'
 
-function Counter({ label, value, hint }: { label: string; value: string; hint?: string }): JSX.Element {
+function Counter({
+  label,
+  value,
+  hint,
+  testId,
+}: {
+  label: string
+  value: string
+  hint?: string
+  /** E2E hook (`e2e/`): identifies this counter regardless of its label text. */
+  testId?: string
+}): JSX.Element {
   return (
-    <div>
+    <div data-testid={testId ? `stat-${testId}` : undefined}>
       <p className="text-[10px] uppercase tracking-wide text-ink-500">{label}</p>
       <p className="text-sm font-semibold tabular-nums text-ink-100" title={hint}>
         {value}
@@ -97,16 +108,17 @@ export function LiveStatsBar({
       </div>
 
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 sm:flex-1">
-        <Counter label="Keyframes" value={formatNumber(stats.keyframes)} />
+        <Counter label="Keyframes" value={formatNumber(stats.keyframes)} testId="keyframes" />
         <Counter
           label="Points"
           value={formatNumber(stats.points, true)}
           hint={`${formatNumber(stats.points)} of a ${formatNumber(MAX_POINTS, true)} budget (${budgetPct}%)${
             stats.droppedPoints ? ` · ${formatNumber(stats.droppedPoints, true)} decimated` : ''
           }`}
+          testId="points"
         />
-        <Counter label="Msg/s" value={stats.messagesPerSecond.toFixed(1)} />
-        <Counter label="Devices" value={formatNumber(stats.devices.length)} />
+        <Counter label="Msg/s" value={stats.messagesPerSecond.toFixed(1)} testId="msgs" />
+        <Counter label="Devices" value={formatNumber(stats.devices.length)} testId="devices" />
       </div>
 
       <div className="flex items-center gap-1.5">
