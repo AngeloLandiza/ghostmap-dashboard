@@ -7,9 +7,12 @@
  */
 import {
   QueryClient,
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
+  type InfiniteData,
+  type UseInfiniteQueryResult,
   type UseMutationResult,
   type UseQueryResult,
 } from '@tanstack/react-query'
@@ -60,6 +63,8 @@ export const queryKeys = {
   maps: {
     all: () => [...root(), 'maps'] as const,
     list: (params?: MapListParams) => [...root(), 'maps', 'list', params ?? {}] as const,
+    /** Cursor-paginated library; kept apart from `list` because the cached shape differs. */
+    infinite: (params?: MapListPageParams) => [...root(), 'maps', 'infinite', params ?? {}] as const,
     detail: (id: string) => [...root(), 'maps', 'detail', id] as const,
   },
   sessions: {
@@ -140,6 +145,33 @@ export function useMaps(params?: MapListParams, options: QueryOptions = {}): Que
   return useQuery<MapListResponse, ApiError>({
     queryKey: queryKeys.maps.list(params),
     queryFn: ({ signal }) => api.maps.list(params, signal),
+    ...options,
+  })
+}
+
+/** `MapListParams` without the cursor, which the infinite query owns. */
+export type MapListPageParams = Omit<MapListParams, 'cursor'>
+
+/**
+ * The map library's paginated feed. The backend returns `next_cursor` (the ISO date of the
+ * last row), so pages chain through `getNextPageParam`; `undefined` ends the list.
+ */
+export function useMapsInfinite(
+  params?: MapListPageParams,
+  options: QueryOptions = {},
+): UseInfiniteQueryResult<InfiniteData<MapListResponse, string | undefined>, ApiError> {
+  return useInfiniteQuery<
+    MapListResponse,
+    ApiError,
+    InfiniteData<MapListResponse, string | undefined>,
+    ReturnType<typeof queryKeys.maps.infinite>,
+    string | undefined
+  >({
+    queryKey: queryKeys.maps.infinite(params),
+    queryFn: ({ pageParam, signal }) =>
+      api.maps.list({ ...(params ?? {}), ...(pageParam ? { cursor: pageParam } : {}) }, signal),
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     ...options,
   })
 }
